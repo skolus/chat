@@ -12,3 +12,6 @@ no
 - mp3 files and mp4 files embed
 - theres rain idk
 - your messages are super safe cause its just peer to peer and i dont log anything
+
+# WARNING:
+This doesnt work because tiago broke it by touching it
