@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
 <title>chat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; } 
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --bg: #0d0f14;
@@ -32,6 +33,8 @@
     font-weight: 300;
     line-height: 1.7;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   #rain { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
@@ -41,6 +44,7 @@
     position: relative;
     z-index: 1;
     height: 100vh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,36 +172,145 @@
   .msg.system { color: var(--muted); font-size: 0.75rem; background: none; border: none; letter-spacing: 0.03em; max-width: 100%; text-align: center; }
 
   /* Markdown & Media styling */
+  .msg { white-space: pre-wrap; }
   .msg b { font-weight: 500; color: #fff; }
   .msg i { font-style: italic; opacity: 0.9; }
   .msg img, .msg video {
-  max-width: 100%;
-  max-height: 280px; /* Caps the height so it doesn't take over the screen */
-  width: auto;       /* Ensures the aspect ratio doesn't stretch */
-  border-radius: 8px;
-  margin-top: 4px;
-  display: block;
-  background: #000;
-} margin-top: 4px; display: block; background: #000; }
+    max-width: 100%;
+    max-height: 280px; /* Caps the height so it doesn't take over the screen */
+    width: auto;       /* Ensures the aspect ratio doesn't stretch */
+    border-radius: 8px;
+    margin-top: 4px;
+    display: block;
+    background: #000;
+  }
   .msg audio { max-width: 100%; margin-top: 4px; display: block; outline: none; border-radius: 8px; }
   .msg a { color: var(--accent); text-decoration: underline; word-break: break-all; }
+  .msg.system { white-space: normal; }
+  .file-caption { margin-top: 0.35em; }
+
+  /* Reply quoting */
+  .reply-quote {
+    font-size: 0.75rem; color: var(--muted); border-left: 2px solid var(--accent);
+    padding-left: 0.5em; margin-bottom: 0.35em; cursor: pointer; opacity: 0.85;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+  }
+  .reply-quote:hover { color: var(--accent); }
+
+  .msg-highlight .msg { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Bubble row: message + hover actions */
+  .bubble-row { display: flex; align-items: flex-end; gap: 0.15rem; max-width: 100%; }
+  .msg-container.me .bubble-row { flex-direction: row-reverse; }
+  .msg-container.them .bubble-row { flex-direction: row; }
+
+  .msg-actions { display: flex; gap: 0.05rem; opacity: 0.55; flex-shrink: 0; position: relative; }
+  @media (hover: hover) {
+    .msg-actions { opacity: 0.3; transition: opacity 0.15s; }
+    .msg-container:hover .msg-actions { opacity: 0.9; }
+  }
+  .msg-actions button {
+    background: none; border: none; color: var(--muted); font-size: 0.9rem; cursor: pointer;
+    padding: 0.3rem; border-radius: 8px; line-height: 1; min-width: 30px; min-height: 30px;
+  }
+  .msg-actions button:hover, .msg-actions button:active { color: var(--accent); background: var(--accent-dim); }
+
+  .react-wrap { position: relative; }
+  .emoji-picker {
+    position: absolute; bottom: calc(100% + 6px); display: none; gap: 0.1rem; padding: 0.35rem;
+    background: #12141b; border: 1px solid var(--border); border-radius: 12px; z-index: 10;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4); white-space: nowrap;
+  }
+  .msg-container.me .emoji-picker { right: 0; }
+  .msg-container.them .emoji-picker { left: 0; }
+  .emoji-picker.open { display: flex; }
+  .emoji-picker button {
+    background: none; border: none; font-size: 1.05rem; padding: 0.3rem; cursor: pointer;
+    border-radius: 8px; min-width: 34px; min-height: 34px;
+  }
+  .emoji-picker button:hover { background: var(--accent-dim); }
+
+  /* Reactions */
+  .msg-reactions { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.2rem; margin-inline: 0.3rem; }
+  .msg-container.me .msg-reactions { justify-content: flex-end; }
+  .reaction-pill {
+    font-size: 0.72rem; padding: 0.15em 0.55em; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor: pointer; line-height: 1.5;
+  }
+  .reaction-pill.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+  /* Reply bar above input */
+  .reply-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+    padding: 0.5rem 1.6rem; background: rgba(255,255,255,0.03); border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+  }
+  .reply-bar-content { display: flex; flex-direction: column; overflow: hidden; }
+  .reply-bar-label { color: var(--accent); font-size: 0.68rem; letter-spacing: 0.03em; }
+  .reply-bar-text { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
+
+  /* File preview modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,6,10,0.72); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 20; padding: 1.5rem;
+  }
+  .modal-card {
+    width: 100%; max-width: 420px; background: #12141b; border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.2rem; display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .modal-title { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.05em; }
+  .modal-preview {
+    max-height: 340px; overflow: hidden; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; background: rgba(255,255,255,0.02);
+  }
+  .modal-preview img, .modal-preview video { max-width: 100%; max-height: 340px; display: block; border-radius: 10px; }
+  .modal-preview audio { width: 100%; }
+  .file-chip { padding: 0.9em 1em; border: 1px solid var(--border); border-radius: 10px; font-size: 0.85rem; color: var(--text-bright); width: 100%; text-align: center; }
+  #modalCaption {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; font-size: 0.88rem; padding: 0.6em 0.9em; border-radius: 12px; outline: none;
+    resize: none; min-height: 2.6em; max-height: 100px; transition: border-color 0.18s;
+  }
+  #modalCaption:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+  #modalSendBtn {
+    padding: 0.55em 1.2em; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--accent); font-family: inherit; font-size: 0.85rem;
+    cursor: pointer; transition: border-color 0.18s, background 0.18s; min-height: 40px;
+  }
+  #modalSendBtn:hover { border-color: var(--accent); background: var(--accent-dim); }
+  #modalSendBtn:disabled { opacity: 0.5; cursor: default; }
 
   .input-bar {
-    display: flex; align-items: center; gap: 0.6rem; padding: 1.1rem 1.6rem;
+    display: flex; align-items: flex-end; gap: 0.6rem; padding: 1.1rem 1.6rem;
+    padding-bottom: calc(1.1rem + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border); background: rgba(255,255,255,0.02);
   }
 
   .attach-btn {
     background: none; border: none; color: var(--muted); font-size: 1.4rem;
-    cursor: pointer; transition: color 0.18s; padding: 0 0.2rem;
+    cursor: pointer; transition: color 0.18s; padding: 0.4rem 0.5rem;
+    min-width: 40px; min-height: 40px;
   }
   .attach-btn:hover { color: var(--text-bright); }
+  .attach-btn:disabled { opacity: 0.4; cursor: default; }
 
   .input-bar input[type="text"] { flex: 1; margin-bottom: 0; }
+  .input-bar textarea {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-family: inherit; font-size: 0.9rem; padding: 0.65em 0.9em; border-radius: 16px;
+    outline: none; resize: none; max-height: 140px; line-height: 1.4;
+    transition: border-color 0.18s;
+  }
+  .input-bar textarea:focus { border-color: var(--accent); }
+  .input-bar textarea::placeholder { color: var(--muted); }
+  .input-bar textarea:disabled { opacity: 0.5; }
+
   .input-bar button:not(.attach-btn) {
     padding: 0.6em 1.3em; border-radius: 12px; border: 1px solid var(--border);
     background: var(--surface); color: var(--accent); font-family: inherit; font-size: 0.85rem;
     cursor: pointer; transition: border-color 0.18s, background 0.18s; white-space: nowrap;
+    min-height: 40px;
   }
   .input-bar button:not(.attach-btn):hover { border-color: var(--accent); background: var(--accent-dim); }
 
@@ -212,6 +325,24 @@
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  #messages { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
+  @media (max-width: 600px) {
+    .screen { padding: 1.5rem 1.2rem; }
+    .chat-header {
+      padding: 0.9rem 1.1rem;
+      padding-top: calc(0.9rem + env(safe-area-inset-top));
+    }
+    #messages { padding: 1rem 0.9rem; }
+    .input-bar { padding: 0.85rem 0.9rem; padding-bottom: calc(0.85rem + env(safe-area-inset-bottom)); gap: 0.45rem; }
+    .reply-bar { padding: 0.5rem 0.9rem; }
+    .msg { max-width: 85%; font-size: 0.9rem; }
+    /* 16px prevents iOS Safari from auto-zooming the page on focus */
+    .input-bar textarea, .input-bar input[type="text"], #modalCaption { font-size: 16px; }
+    .modal-card { max-width: 100%; }
+    .reply-bar-text { max-width: 50vw; }
+  }
 </style>
 </head>
 <body>
@@ -256,11 +387,31 @@
     </div>
   </div>
 
+  <div class="reply-bar hidden" id="replyBar">
+    <div class="reply-bar-content">
+      <span class="reply-bar-label" id="replyBarLabel"></span>
+      <span class="reply-bar-text" id="replyBarText"></span>
+    </div>
+    <button class="pill-btn" id="replyBarClose">✕</button>
+  </div>
+
   <div class="input-bar">
     <input type="file" id="fileInput" style="display:none">
     <button class="attach-btn" id="attachBtn" title="Send a file up to 10MB">＋</button>
-    <input type="text" id="msgInput" placeholder="type a message..." autocomplete="off">
+    <textarea id="msgInput" placeholder="type a message..." autocomplete="off" rows="1"></textarea>
     <button id="sendBtn">send</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="fileModalOverlay">
+  <div class="modal-card">
+    <div class="modal-title">sending a file</div>
+    <div class="modal-preview" id="modalPreview"></div>
+    <textarea id="modalCaption" placeholder="add a message... (optional)" rows="1"></textarea>
+    <div class="modal-actions">
+      <button class="pill-btn" id="modalCancelBtn">cancel</button>
+      <button id="modalSendBtn">send</button>
+    </div>
   </div>
 </div>
 
@@ -414,10 +565,23 @@ const leaveBtn = document.getElementById('leaveBtn');
 const typingIndicator = document.getElementById('typingIndicator');
 const attachBtn = document.getElementById('attachBtn');
 const fileInput = document.getElementById('fileInput');
+const replyBar = document.getElementById('replyBar');
+const replyBarLabel = document.getElementById('replyBarLabel');
+const replyBarText = document.getElementById('replyBarText');
+const replyBarClose = document.getElementById('replyBarClose');
+const fileModalOverlay = document.getElementById('fileModalOverlay');
+const modalPreview = document.getElementById('modalPreview');
+const modalCaption = document.getElementById('modalCaption');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
+const modalSendBtn = document.getElementById('modalSendBtn');
 
 const PEER_PREFIX = 'lofichat-';
+const REACT_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 let lastMsgMinute = -1;
 let typingTimeout = null;
+let replyTarget = null;
+let pendingFile = null;
+const messageRegistry = new Map(); // msgId -> { container, reactions: {emoji: Set('me'|'them')}, reactionsEl }
 
 // --- Audio Synthesizer (No files needed) ---
 let audioCtx;
@@ -474,7 +638,117 @@ function parseMarkdown(str) {
   let html = escapeHTML(str);
   html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>'); // Bold
   html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');     // Italic
-  return html;
+  return html; // newlines are preserved as-is; .msg uses white-space: pre-wrap
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function truncate(str, n) {
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+function labelForFile(category) {
+  if (category === 'image') return '📷 photo';
+  if (category === 'video') return '🎞 video';
+  if (category === 'audio') return '🎵 audio';
+  return '📎 file';
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+// --- Reply targeting ---
+function setReplyTarget(id, who, snippet) {
+  replyTarget = { id, who, snippet };
+  replyBarLabel.textContent = 'replying to ' + (who === 'me' ? 'yourself' : 'them');
+  replyBarText.textContent = snippet;
+  replyBar.classList.remove('hidden');
+  msgInput.focus();
+}
+
+function clearReplyTarget() {
+  replyTarget = null;
+  replyBar.classList.add('hidden');
+}
+
+function jumpToMessage(id) {
+  const entry = messageRegistry.get(id);
+  if (!entry) return;
+  entry.container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  entry.container.classList.add('msg-highlight');
+  setTimeout(() => entry.container.classList.remove('msg-highlight'), 1200);
+}
+
+// --- Reactions ---
+function closeAllPickers() {
+  document.querySelectorAll('.emoji-picker.open').forEach(p => p.classList.remove('open'));
+}
+document.addEventListener('click', closeAllPickers);
+
+function toggleReaction(msgId, emoji, sender, shouldSend = true) {
+  const entry = messageRegistry.get(msgId);
+  if (!entry) return; // message no longer tracked (e.g. very old scrollback)
+  if (!entry.reactions[emoji]) entry.reactions[emoji] = new Set();
+  const set = entry.reactions[emoji];
+  if (set.has(sender)) set.delete(sender); else set.add(sender);
+  if (set.size === 0) delete entry.reactions[emoji];
+  renderReactions(msgId);
+  if (shouldSend && conn && conn.open) {
+    try { conn.send({ type: 'reaction', msgId, emoji }); } catch (e) {}
+  }
+}
+
+function renderReactions(msgId) {
+  const entry = messageRegistry.get(msgId);
+  if (!entry) return;
+  const container = entry.reactionsEl;
+  container.innerHTML = '';
+  Object.entries(entry.reactions).forEach(([emoji, set]) => {
+    if (!set.size) return;
+    const pill = document.createElement('button');
+    pill.className = 'reaction-pill' + (set.has('me') ? ' active' : '');
+    pill.textContent = emoji + (set.size > 1 ? ' ' + set.size : '');
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleReaction(msgId, emoji, 'me');
+    });
+    container.appendChild(pill);
+  });
+}
+
+// --- File preview modal ---
+function openFileModal(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File is too large. Please select a file under 10MB.');
+    return;
+  }
+  let category = 'other';
+  if (file.type.startsWith('image/')) category = 'image';
+  else if (file.type.startsWith('video/')) category = 'video';
+  else if (file.type.startsWith('audio/')) category = 'audio';
+
+  pendingFile = { file, category };
+  modalCaption.value = '';
+  autoResize(modalCaption);
+
+  const url = URL.createObjectURL(file);
+  if (category === 'image') modalPreview.innerHTML = `<img src="${url}" alt="preview">`;
+  else if (category === 'video') modalPreview.innerHTML = `<video src="${url}" controls></video>`;
+  else if (category === 'audio') modalPreview.innerHTML = `<audio src="${url}" controls></audio>`;
+  else modalPreview.innerHTML = `<div class="file-chip">📎 ${escapeHTML(file.name)}</div>`;
+
+  fileModalOverlay.classList.remove('hidden');
+}
+
+function closeFileModal() {
+  fileModalOverlay.classList.add('hidden');
+  pendingFile = null;
+  modalPreview.innerHTML = '';
+  modalCaption.value = '';
 }
 
 // ICE servers: STUN alone fails on strict NATs / CGNAT (very common on
@@ -639,6 +913,8 @@ function setupConnection() {
     msgInput.disabled = true;
     sendBtn.disabled = true;
     attachBtn.disabled = true;
+    clearReplyTarget();
+    closeFileModal();
   });
   conn.on('error', (err) => {
     console.warn('connection error after setup:', err);
@@ -667,12 +943,14 @@ function handleIncomingData(data) {
     typingIndicator.classList.add('hidden');
     addMessage(data, 'them');
     playSoftBeep();
+  } else if (data.type === 'reaction') {
+    toggleReaction(data.msgId, data.emoji, 'them', false);
   } else if (data.type === 'system') {
     addSystemMessage(data.text);
   } else {
     // Backwards compatibility
     typingIndicator.classList.add('hidden');
-    addMessage({ type: 'chat', text: data }, 'them');
+    addMessage({ type: 'chat', id: uid(), text: data }, 'them');
     playSoftBeep();
   }
 }
@@ -691,9 +969,11 @@ function addSystemMessage(text) {
 function addMessage(dataObj, who) {
   const now = new Date();
   const currentMin = now.getMinutes();
+  const msgId = dataObj.id || (dataObj.id = uid()); // backwards-compat if id ever missing
 
   const container = document.createElement('div');
   container.className = 'msg-container ' + who;
+  container.dataset.msgId = msgId;
 
   // Timestamps
   if (currentMin !== lastMsgMinute) {
@@ -704,24 +984,88 @@ function addMessage(dataObj, who) {
     lastMsgMinute = currentMin;
   }
 
+  const bubbleRow = document.createElement('div');
+  bubbleRow.className = 'bubble-row';
+
   const msgDiv = document.createElement('div');
   msgDiv.className = 'msg ' + who;
 
-  if (dataObj.type === 'file') {
-    if (dataObj.category === 'image') {
-      msgDiv.innerHTML = `<img src="${dataObj.data}" alt="Shared image">`;
-    } else if (dataObj.category === 'video') {
-      msgDiv.innerHTML = `<video src="${dataObj.data}" controls></video>`;
-    } else if (dataObj.category === 'audio') {
-      msgDiv.innerHTML = `<audio src="${dataObj.data}" controls></audio>`;
-    } else {
-      msgDiv.innerHTML = `📎 <a href="${dataObj.data}" download="${dataObj.name}">Download: ${escapeHTML(dataObj.name)}</a>`;
-    }
-  } else {
-    msgDiv.innerHTML = parseMarkdown(dataObj.text || '');
+  let innerHTML = '';
+  if (dataObj.replyTo) {
+    const safeSnippet = escapeHTML(dataObj.replyTo.snippet || '');
+    innerHTML += `<div class="reply-quote" data-target-id="${dataObj.replyTo.id}">↩ ${dataObj.replyTo.who === 'me' ? 'you' : 'them'}: ${safeSnippet}</div>`;
   }
 
-  container.appendChild(msgDiv);
+  if (dataObj.type === 'file') {
+    if (dataObj.category === 'image') {
+      innerHTML += `<img src="${dataObj.data}" alt="Shared image">`;
+    } else if (dataObj.category === 'video') {
+      innerHTML += `<video src="${dataObj.data}" controls></video>`;
+    } else if (dataObj.category === 'audio') {
+      innerHTML += `<audio src="${dataObj.data}" controls></audio>`;
+    } else {
+      innerHTML += `📎 <a href="${dataObj.data}" download="${dataObj.name}">Download: ${escapeHTML(dataObj.name)}</a>`;
+    }
+    if (dataObj.caption) {
+      innerHTML += `<div class="file-caption">${parseMarkdown(dataObj.caption)}</div>`;
+    }
+  } else {
+    innerHTML += parseMarkdown(dataObj.text || '');
+  }
+  msgDiv.innerHTML = innerHTML;
+
+  const replyQuoteEl = msgDiv.querySelector('.reply-quote');
+  if (replyQuoteEl) {
+    replyQuoteEl.addEventListener('click', () => jumpToMessage(replyQuoteEl.dataset.targetId));
+  }
+
+  // Reply / react actions
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  actions.innerHTML = `
+    <button class="action-reply" title="reply">↩</button>
+    <div class="react-wrap">
+      <button class="action-react" title="react">🙂</button>
+      <div class="emoji-picker">${REACT_EMOJIS.map(e => `<button data-emoji="${e}">${e}</button>`).join('')}</div>
+    </div>
+  `;
+
+  const replySnippet = dataObj.type === 'file' ? labelForFile(dataObj.category) : truncate(dataObj.text || '', 80);
+  actions.querySelector('.action-reply').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setReplyTarget(msgId, who, replySnippet);
+  });
+  const reactBtn = actions.querySelector('.action-react');
+  const picker = actions.querySelector('.emoji-picker');
+  reactBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = picker.classList.contains('open');
+    closeAllPickers();
+    if (!isOpen) picker.classList.add('open');
+  });
+  picker.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleReaction(msgId, btn.dataset.emoji, 'me');
+      picker.classList.remove('open');
+    });
+  });
+
+  if (who === 'me') {
+    bubbleRow.appendChild(actions);
+    bubbleRow.appendChild(msgDiv);
+  } else {
+    bubbleRow.appendChild(msgDiv);
+    bubbleRow.appendChild(actions);
+  }
+  container.appendChild(bubbleRow);
+
+  const reactionsEl = document.createElement('div');
+  reactionsEl.className = 'msg-reactions';
+  container.appendChild(reactionsEl);
+
+  messageRegistry.set(msgId, { container, reactions: {}, reactionsEl });
+
   messagesEl.insertBefore(container, typingIndicator);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
@@ -735,7 +1079,9 @@ function sendMessage() {
     return;
   }
 
-  const payload = { type: 'chat', text: text };
+  const payload = { type: 'chat', id: uid(), text: text };
+  if (replyTarget) payload.replyTo = { ...replyTarget };
+
   try {
     conn.send(payload);
   } catch (err) {
@@ -745,11 +1091,14 @@ function sendMessage() {
   addMessage(payload, 'me');
 
   msgInput.value = '';
+  autoResize(msgInput);
+  clearReplyTarget();
   try { conn.send({ type: 'typing', state: false }); } catch (e) {}
 }
 
-// Typing Events
+// Typing Events + auto-growing textarea
 msgInput.addEventListener('input', () => {
+  autoResize(msgInput);
   if (!conn || !conn.open) return;
   conn.send({ type: 'typing', state: true });
 
@@ -759,56 +1108,91 @@ msgInput.addEventListener('input', () => {
   }, 1500);
 });
 
-// File Sharing
+// Enter sends, Shift+Enter inserts a newline
+msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Pasting an attachment (image/file) straight into the chatbox
+msgInput.addEventListener('paste', (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.kind === 'file') {
+      const file = item.getAsFile();
+      if (file) {
+        if (!conn || !conn.open) {
+          addSystemMessage('not connected — file not sent');
+          return;
+        }
+        e.preventDefault();
+        openFileModal(file);
+        return;
+      }
+    }
+  }
+});
+
+// File Sharing — pick a file, preview it in a modal, then send
 attachBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => {
   const file = fileInput.files[0];
+  fileInput.value = ''; // reset immediately, pendingFile keeps the reference
   if (!file) return;
   if (!conn || !conn.open) {
     addSystemMessage('not connected — file not sent');
-    fileInput.value = '';
     return;
   }
+  openFileModal(file);
+});
 
-  // Bumped to 10MB limit to accommodate small videos/audio
-  if (file.size > 10 * 1024 * 1024) {
-    alert("File is too large. Please select a file under 10MB.");
-    fileInput.value = '';
+modalCaption.addEventListener('input', () => autoResize(modalCaption));
+modalCaption.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+});
+
+modalCancelBtn.addEventListener('click', closeFileModal);
+
+modalSendBtn.addEventListener('click', () => {
+  if (!pendingFile) return;
+  if (!conn || !conn.open) {
+    addSystemMessage('not connected — file not sent');
+    closeFileModal();
     return;
   }
-
-  // Determine media category
-  let category = 'other';
-  if (file.type.startsWith('image/')) category = 'image';
-  else if (file.type.startsWith('video/')) category = 'video';
-  else if (file.type.startsWith('audio/')) category = 'audio';
-
+  modalSendBtn.disabled = true;
+  const { file, category } = pendingFile;
   const reader = new FileReader();
   reader.onload = (e) => {
-    if (!conn || !conn.open) {
-      addSystemMessage('not connected — file not sent');
-      return;
-    }
-    const payload = {
-      type: 'file',
-      name: file.name,
-      category: category,
-      data: e.target.result // Base64 Data URL
-    };
+    const payload = { type: 'file', id: uid(), name: file.name, category, data: e.target.result };
+    const caption = modalCaption.value.trim();
+    if (caption) payload.caption = caption;
+    if (replyTarget) payload.replyTo = { ...replyTarget };
     try {
       conn.send(payload);
     } catch (err) {
       addSystemMessage('failed to send file — connection dropped');
+      modalSendBtn.disabled = false;
       return;
     }
     addMessage(payload, 'me');
+    clearReplyTarget();
+    modalSendBtn.disabled = false;
+    closeFileModal();
+  };
+  reader.onerror = () => {
+    addSystemMessage('failed to read file');
+    modalSendBtn.disabled = false;
   };
   reader.readAsDataURL(file);
-  fileInput.value = ''; // Reset
 });
 
+replyBarClose.addEventListener('click', clearReplyTarget);
+
 sendBtn.addEventListener('click', sendMessage);
-msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
 
 leaveBtn.addEventListener('click', () => {
   if (conn) conn.close();
